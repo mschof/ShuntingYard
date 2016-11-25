@@ -181,7 +181,7 @@ double ShuntingYard::evaluate(std::string infix_string, std::map<std::string, do
       }
     }
     else {
-      // Error: invalid token type_
+      // Error: invalid token type
       this->reportError("An invalid token type was encountered while trying to evaluate the formula.");
       return 0;
     }
