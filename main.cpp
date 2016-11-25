@@ -12,6 +12,7 @@ int main(int argc, char** argv)
     std::cout << "Example: ./program \"sin ( 3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3 )\"" << std::endl;
     return 1;
   }
+  
   ShuntingYard* sy = new ShuntingYard();
   std::string infix(argv[1]);
   std::deque<Token> postfix = sy->getPostfix(infix);
