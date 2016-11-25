@@ -33,15 +33,16 @@ class ShuntingYard
     double evaluate(std::string, std::map<std::string, double>);
 
   private:
-    std::map<char, unsigned int> operators_;
+    std::map<std::string, unsigned int> operators_;
     std::map<std::string, unsigned int> functions_;
 
     int handleNumber(std::string, unsigned int, std::deque<Token>*);
-    int handleOperator(std::string, unsigned int, char, std::deque<Token>*, std::stack<Token>*);
     int handleParentheses(char, std::deque<Token>*, std::stack<Token>*);
     int handleFunctionArgumentSeparator(std::deque<Token>*, std::stack<Token>*);
+    int handleOperator(std::string, unsigned int, std::deque<Token>*, std::stack<Token>*);
     int handleFunctionOrVariable(std::string, unsigned int, std::deque<Token>*, std::stack<Token>*);
     int calculateFunctionOrOperator(Token*, std::stack<double>*);
+    std::vector<double> popValuesFromStack(std::stack<double>*, unsigned int);
     void reportError(std::string);
     
 };

@@ -17,7 +17,7 @@ int main(int argc, char** argv)
   std::string infix(argv[1]);
   std::deque<Token> postfix = sy->getPostfix(infix);
   sy->printPostfix(postfix);
-  std::map<std::string, double> definitions = {{"x", 1}};
+  std::map<std::string, double> definitions = {}; // No definitions for variables, otherwise e.g. { {"x", 1}, {"y", 2}, {"z", 3} }
   std::cout << "Result: " << sy->evaluate(infix, definitions) << std::endl;
 
   delete sy;

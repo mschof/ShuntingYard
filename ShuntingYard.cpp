@@ -12,12 +12,12 @@
 // Constructor
 ShuntingYard::ShuntingYard()
 {
-  this->operators_.insert(std::pair<char, unsigned int>('+', 2));
-  this->operators_.insert(std::pair<char, unsigned int>('-', 2));
-  this->operators_.insert(std::pair<char, unsigned int>('*', 2));
-  this->operators_.insert(std::pair<char, unsigned int>('/', 2));
-  this->operators_.insert(std::pair<char, unsigned int>('^', 2));
-  this->operators_.insert(std::pair<char, unsigned int>('#', 1)); // Replacement for unary minus sign
+  this->operators_.insert(std::pair<std::string, unsigned int>("+", 2));
+  this->operators_.insert(std::pair<std::string, unsigned int>("-", 2));
+  this->operators_.insert(std::pair<std::string, unsigned int>("*", 2));
+  this->operators_.insert(std::pair<std::string, unsigned int>("/", 2));
+  this->operators_.insert(std::pair<std::string, unsigned int>("^", 2));
+  this->operators_.insert(std::pair<std::string, unsigned int>("#", 1)); // Replacement for unary minus sign
 
   this->functions_.insert(std::pair<std::string, unsigned int>("sin", 1));
   this->functions_.insert(std::pair<std::string, unsigned int>("cos", 1));
@@ -47,21 +47,12 @@ std::deque<Token> ShuntingYard::getPostfix(std::string infix_string)
     current = input_sanitized.at(i);
     // Number
     if(isdigit(current)) {
-      int number_size = this->handleNumber(input_sanitized, i, &output);
-      if(number_size == -1) {
+      int size = this->handleNumber(input_sanitized, i, &output);
+      if(size == -1) {
         this->reportError("Infix notation contains invalid numbers. Please use only digits and at most one decimal point (.).");
         return std::deque<Token>();
       }
-      i += (number_size - 1);
-    }
-    // Operator
-    else if(this->operators_.find(current) != this->operators_.end()) {
-      if(current == '-' && (i + 1) < input_sanitized.size() && input_sanitized.at(i + 1) == '-') {
-        // Skip double minus (--)
-        i++;
-        continue;
-      }
-      int ret = this->handleOperator(input_sanitized, i, current, &output, &opstack);
+      i += (size - 1);
     }
     // Parentheses
     else if(current == '(' || current == ')') {
@@ -78,6 +69,20 @@ std::deque<Token> ShuntingYard::getPostfix(std::string infix_string)
         this->reportError("There seems to be an error with the function separator or the parentheses.");
         return std::deque<Token>();
       }
+    }
+    // Operator
+    else if(!isalnum(current)) {
+      if(current == '-' && (i + 1) < input_sanitized.size() && input_sanitized.at(i + 1) == '-') {
+        // Skip double minus (--)
+        i++;
+        continue;
+      }
+      int size = this->handleOperator(input_sanitized, i, &output, &opstack);
+      if(size == -1) {
+        this->reportError("There was an error while trying to parse an operator.");
+        return std::deque<Token>();
+      }
+      i += (size - 1);
     }
     // Function or variable
     else if(isalpha(current)) {
@@ -195,104 +200,6 @@ double ShuntingYard::evaluate(std::string infix_string, std::map<std::string, do
   return 0;
 }
 
-// REMARK: There is a lot of redundancy in here. This could probably be done better.
-// Calculates a new value using an operator or a function and pushes the new value to the stack.
-// @param token The token to use as an operator or function.
-// @param valstack A stack containing all previous values.
-// @return An error code, 0 = no error.
-int ShuntingYard::calculateFunctionOrOperator(Token* token, std::stack<double>* valstack)
-{
-  if(token->type_ == OPERATOR && (valstack->size() < (this->operators_.find(((token->content_).at(0))))->second)) {
-    // Error: not enough values on stack for this operator
-    return 1;
-  }
-  if(token->type_ == FUNCTION && (valstack->size() < (this->functions_.find(token->content_))->second)) {
-    // Error: not enough values on stack for this function
-    return 2;
-  }
-
-  if(token->type_ == OPERATOR) {
-    if(token->content_ == "+") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = val_1 + val_2;
-      valstack->push(result);
-    }
-    else if(token->content_ == "-") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = val_1 - val_2;
-      valstack->push(result);
-    }
-    else if(token->content_ == "*") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = val_1 * val_2;
-      valstack->push(result);
-    }
-    else if(token->content_ == "/") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = val_1 / val_2;
-      valstack->push(result);
-    }
-    else if(token->content_ == "^") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = pow(val_2, val_1);
-      valstack->push(result);
-    }
-    else if(token->content_ == "#") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double result = val_1 * -1.0;
-      valstack->push(result);
-    }
-  }
-  else if(token->type_ == FUNCTION) {
-    if(token->content_ == "sin") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double result = sin(val_1);
-      valstack->push(result);
-    }
-    else if(token->content_ == "cos") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double result = cos(val_1);
-      valstack->push(result);
-    }
-    else if(token->content_ == "max") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = (val_1 > val_2) ? val_1 : val_2;
-      valstack->push(result);
-    }
-    else if(token->content_ == "min") {
-      double val_1 = valstack->top();
-      valstack->pop();
-      double val_2 = valstack->top();
-      valstack->pop();
-      double result = (val_1 < val_2) ? val_1 : val_2;
-      valstack->push(result);
-    }
-  }
-
-  return 0;
-}
-
 // Handles a number in the original input string.
 // @param output The final output queue.
 // @return The length of the resulting number or <0 if an error occured.
@@ -327,49 +234,6 @@ int ShuntingYard::handleNumber(std::string input, unsigned int start_index, std:
     // Error: invalid number
     return -1;
   }
-}
-
-// Handles an operator in the original input string.
-// @param input The input string.
-// @param start_index The starting index of this operation.
-// @param op The operator.
-// @param output The final output queue.
-// @param opstack The operator stack.
-// @return An error code, 0 = no error.
-int ShuntingYard::handleOperator(std::string input, unsigned int start_index, char op, std::deque<Token>* output, std::stack<Token>* opstack)
-{
-  Token token;
-  token.type_ = OPERATOR;
-  token.content_ = op;
-  if(op == '+' || op == '-') {
-    token.precedence_ = 4;
-    if(op == '-' && start_index == 0 || this->operators_.find(input.at(start_index - 1)) != this->operators_.end() || input.at(start_index - 1) == '(') {
-      // Unary minus operator
-      token.content_ = "#";
-      token.precedence_ = 1;
-    }
-  }
-  else if(op == '*' || op == '/')
-    token.precedence_ = 3;
-  else if(op == '^')
-    token.precedence_ = 2;
-  if(op == '+' || op == '-' || op == '*' || op == '/')
-    token.associativity_ = 1;
-  else if(op == '^')
-    token.associativity_ = 2;
-  
-  Token token_top;
-  while((!opstack->empty() && (token_top = opstack->top()).type_ == OPERATOR) &&
-    ((token_top.associativity_ == 1 && token_top.precedence_ <= token.precedence_) ||
-    (token_top.associativity_ == 2 && token_top.precedence_ < token.precedence_))) {
-    // Left-associative and precedence less then or equal to that of op OR right-associative and precedence less than that of op
-    output->push_back(token_top);
-    opstack->pop();
-  }
-
-  opstack->push(token);
-
-  return 0;
 }
 
 // Handles a parenthesis in the original input string.
@@ -447,6 +311,64 @@ int ShuntingYard::handleFunctionArgumentSeparator(std::deque<Token>* output, std
   return 0;
 }
 
+// Handles an operator in the original input string.
+// @param input The input string.
+// @param start_index The starting index of this operation.
+// @param output The final output queue.
+// @param opstack The operator stack.
+// @return The length of the resulting operator or <0 if an error occured.
+int ShuntingYard::handleOperator(std::string input, unsigned int start_index, std::deque<Token>* output, std::stack<Token>* opstack)
+{
+  std::string op;
+  for(unsigned int i = start_index; i < input.size(); i++) {
+    if(input.at(i) == '(' || isalnum(input.at(i))) {
+      break;
+    }
+    op.push_back(input.at(i));
+  }
+
+  if(this->operators_.find(op) == this->operators_.end()) {
+    // Error: no such operator
+    std::cout << "op: " << op << std::endl;
+    return -1;
+  }
+
+  Token token;
+  token.type_ = OPERATOR;
+  token.content_ = op;
+  if(op == "+" || op == "-") {
+    token.precedence_ = 4;
+    // TODO: Adapt for multi-character operators
+    std::string predecessor(1, input.at(start_index - 1));
+    if(op == "-" && start_index == 0 || this->operators_.find(predecessor) != this->operators_.end() || input.at(start_index - 1) == '(') {
+      // Unary minus operator
+      token.content_ = "#";
+      token.precedence_ = 1;
+    }
+  }
+  else if(op == "*" || op == "/")
+    token.precedence_ = 3;
+  else if(op == "^")
+    token.precedence_ = 2;
+  if(op == "+" || op == "-" || op == "*" || op == "/")
+    token.associativity_ = 1;
+  else if(op == "^")
+    token.associativity_ = 2;
+  
+  Token token_top;
+  while((!opstack->empty() && (token_top = opstack->top()).type_ == OPERATOR) &&
+    ((token_top.associativity_ == 1 && token_top.precedence_ <= token.precedence_) ||
+    (token_top.associativity_ == 2 && token_top.precedence_ < token.precedence_))) {
+    // Left-associative and precedence less then or equal to that of op OR right-associative and precedence less than that of op
+    output->push_back(token_top);
+    opstack->pop();
+  }
+
+  opstack->push(token);
+
+  return op.size();
+}
+
 // Handles a function or variable in the original input string.
 // @param input The input string.
 // @param start_index The starting index of this operation.
@@ -489,6 +411,87 @@ int ShuntingYard::handleFunctionOrVariable(std::string input, unsigned int start
     output->push_back(token);
   
   return thing.size();
+}
+
+// Calculates a new value using an operator or a function and pushes the new value to the stack.
+// @param token The token to use as an operator or function.
+// @param valstack A stack containing all previous values.
+// @return An error code, 0 = no error.
+int ShuntingYard::calculateFunctionOrOperator(Token* token, std::stack<double>* valstack)
+{
+  unsigned int val_count;
+  if(token->type_ == OPERATOR && (valstack->size() < (val_count = ((this->operators_.find(token->content_))->second)))) {
+    // Error: not enough values on stack for this operator
+    return 1;
+  }
+  if(token->type_ == FUNCTION && (valstack->size() < (val_count = ((this->functions_.find(token->content_))->second)))) {
+    // Error: not enough values on stack for this function
+    return 2;
+  }
+
+  std::vector<double> values = this->popValuesFromStack(valstack, val_count);
+
+  // Remark: Values are on stack in reverse order
+  if(token->type_ == OPERATOR) {
+    if(token->content_ == "+") {
+      double result = values.at(1) + values.at(0);
+      valstack->push(result);
+    }
+    else if(token->content_ == "-") {
+      double result = values.at(1) - values.at(0);
+      valstack->push(result);
+    }
+    else if(token->content_ == "*") {
+      double result = values.at(1) * values.at(0);
+      valstack->push(result);
+    }
+    else if(token->content_ == "/") {
+      double result = values.at(1) / values.at(0);
+      valstack->push(result);
+    }
+    else if(token->content_ == "^") {
+      double result = pow(values.at(1), values.at(0));
+      valstack->push(result);
+    }
+    else if(token->content_ == "#") {
+      double result = values.at(0) * -1.0;
+      valstack->push(result);
+    }
+  }
+  else if(token->type_ == FUNCTION) {
+    if(token->content_ == "sin") {
+      double result = sin(values.at(0));
+      valstack->push(result);
+    }
+    else if(token->content_ == "cos") {
+      double result = cos(values.at(0));
+      valstack->push(result);
+    }
+    else if(token->content_ == "max") {
+      double result = (values.at(1) > values.at(0)) ? values.at(1) : values.at(0);
+      valstack->push(result);
+    }
+    else if(token->content_ == "min") {
+      double result = (values.at(1) < values.at(0)) ? values.at(1) : values.at(0);
+      valstack->push(result);
+    }
+  }
+
+  return 0;
+}
+
+// Removes values from the stack and stores them into a vector.
+// @param valstack The stack to remove values from.
+// @param val_count A number indicating how many values to remove.
+// @return A vector containing the removed values.
+std::vector<double> ShuntingYard::popValuesFromStack(std::stack<double>* valstack, unsigned int val_count)
+{
+  std::vector<double> values;
+  while(val_count-- > 0) {
+    values.push_back(valstack->top());
+    valstack->pop();
+  }
+  return values;
 }
 
 // Helper function to print errors.
