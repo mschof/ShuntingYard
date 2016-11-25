@@ -37,7 +37,7 @@ class ShuntingYard
     std::map<std::string, unsigned int> functions_;
 
     int handleNumber(std::string, unsigned int, std::deque<Token>*);
-    int handleOperator(char, std::deque<Token>*, std::stack<Token>*);
+    int handleOperator(std::string, unsigned int, char, std::deque<Token>*, std::stack<Token>*);
     int handleParentheses(char, std::deque<Token>*, std::stack<Token>*);
     int handleFunctionArgumentSeparator(std::deque<Token>*, std::stack<Token>*);
     int handleFunctionOrVariable(std::string, unsigned int, std::deque<Token>*, std::stack<Token>*);

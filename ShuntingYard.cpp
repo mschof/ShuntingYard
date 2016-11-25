@@ -17,6 +17,7 @@ ShuntingYard::ShuntingYard()
   this->operators_.insert(std::pair<char, unsigned int>('*', 2));
   this->operators_.insert(std::pair<char, unsigned int>('/', 2));
   this->operators_.insert(std::pair<char, unsigned int>('^', 2));
+  this->operators_.insert(std::pair<char, unsigned int>('#', 1)); // Replacement for unary minus sign
 
   this->functions_.insert(std::pair<std::string, unsigned int>("sin", 1));
   this->functions_.insert(std::pair<std::string, unsigned int>("cos", 1));
@@ -55,7 +56,12 @@ std::deque<Token> ShuntingYard::getPostfix(std::string infix_string)
     }
     // Operator
     else if(this->operators_.find(current) != this->operators_.end()) {
-      int ret = this->handleOperator(current, &output, &opstack);
+      if(current == '-' && (i + 1) < input_sanitized.size() && input_sanitized.at(i + 1) == '-') {
+        // Skip double minus (--)
+        i++;
+        continue;
+      }
+      int ret = this->handleOperator(input_sanitized, i, current, &output, &opstack);
     }
     // Parentheses
     else if(current == '(' || current == ')') {
@@ -157,15 +163,13 @@ double ShuntingYard::evaluate(std::string infix_string, std::map<std::string, do
       valstack.push(std::stod(token.content_));
     }
     else if(token.type_ == VARIABLE) {
-      std::map<std::string, double>::iterator val_it = definitions.find(token.content_);
-      if(val_it == definitions.end()) {
+      std::map<std::string, double>::iterator def_it = definitions.find(token.content_);
+      if(def_it == definitions.end()) {
         // Error: missing variable definitions
         this->reportError("Missing variable definition for \"" + token.content_ + "\".");
         return 0;
       }
-      token.content_ = val_it->second;
-      token.type_ = NUMBER;
-      valstack.push(std::stod(token.content_));
+      valstack.push(def_it->second);
     }
     else if(token.type_ == OPERATOR || token.type_ == FUNCTION) {
       int ret = this->calculateFunctionOrOperator(&token, &valstack);
@@ -252,6 +256,12 @@ int ShuntingYard::calculateFunctionOrOperator(Token* token, std::stack<double>* 
       double result = pow(val_2, val_1);
       valstack->push(result);
     }
+    else if(token->content_ == "#") {
+      double val_1 = valstack->top();
+      valstack->pop();
+      double result = val_1 * -1.0;
+      valstack->push(result);
+    }
   }
   else if(token->type_ == FUNCTION) {
     if(token->content_ == "sin") {
@@ -288,8 +298,6 @@ int ShuntingYard::calculateFunctionOrOperator(Token* token, std::stack<double>* 
 }
 
 // Handles a number in the original input string.
-// @param infix_string The input string.
-// @param start_index The starting index of this operation.
 // @param output The final output queue.
 // @return The length of the resulting number or <0 if an error occured.
 int ShuntingYard::handleNumber(std::string input, unsigned int start_index, std::deque<Token>* output)
@@ -326,17 +334,25 @@ int ShuntingYard::handleNumber(std::string input, unsigned int start_index, std:
 }
 
 // Handles an operator in the original input string.
+// @param input The input string.
+// @param start_index The starting index of this operation.
 // @param op The operator.
 // @param output The final output queue.
 // @param opstack The operator stack.
 // @return An error code, 0 = no error.
-int ShuntingYard::handleOperator(char op, std::deque<Token>* output, std::stack<Token>* opstack)
+int ShuntingYard::handleOperator(std::string input, unsigned int start_index, char op, std::deque<Token>* output, std::stack<Token>* opstack)
 {
   Token token;
   token.type_ = OPERATOR;
   token.content_ = op;
-  if(op == '+' || op == '-')
+  if(op == '+' || op == '-') {
     token.precedence_ = 4;
+    if(op == '-' && start_index == 0 || this->operators_.find(input.at(start_index - 1)) != this->operators_.end() || input.at(start_index - 1) == '(') {
+      // Unary minus operator
+      token.content_ = "#";
+      token.precedence_ = 1;
+    }
+  }
   else if(op == '*' || op == '/')
     token.precedence_ = 3;
   else if(op == '^')
@@ -436,7 +452,7 @@ int ShuntingYard::handleFunctionArgumentSeparator(std::deque<Token>* output, std
 }
 
 // Handles a function or variable in the original input string.
-// @param infix_string The input string.
+// @param input The input string.
 // @param start_index The starting index of this operation.
 // @param output The final output queue.
 // @param opstack The operator stack.
