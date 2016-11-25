@@ -88,10 +88,6 @@ std::deque<Token> ShuntingYard::getPostfix(std::string infix_string)
       }
       i += (size - 1);
     }
-    else if(current == ' ') {
-      // Skip
-      continue;
-    }
     else {
       // Error: Unknown input
       this->reportError("There was an error while reading the input (unknown symbols).");
