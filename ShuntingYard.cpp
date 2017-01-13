@@ -41,6 +41,7 @@ std::deque<Token> ShuntingYard::getPostfix(std::string infix_string)
   char current;
   std::string input_sanitized = infix_string;
   input_sanitized.erase(std::remove(input_sanitized.begin(), input_sanitized.end(), ' '), input_sanitized.end());
+  input_sanitized = this->fixOperators(input_sanitized);
 
   // Start parsing the string in infix notation
   for(unsigned int i = 0; i < input_sanitized.size(); i++) {
@@ -198,6 +199,48 @@ double ShuntingYard::evaluate(std::string infix_string, std::map<std::string, do
   }
 
   return 0;
+}
+
+// Replaces substrings in a string until no more occurrences of this substring are found.
+// @param input The input string.
+// @param str_old The substring to replace.
+// @param str_new The new substring.
+// @return The new string with all occurrences of the specified substring removed.
+std::string ShuntingYard::replaceAllRepeated(std::string input, std::string str_old, std::string str_new) {
+  std::string input_new = input;
+  std::string input_old = "";
+  int old_length = str_old.size();
+  int new_length = str_new.size();
+  while(input_new.compare(input_old) != 0) {
+    input_old = input_new;
+    int index = 0;
+    while(true) {
+      index = input_new.find(str_old, index);
+      if(index == std::string::npos)
+        break;
+      input_new.replace(index, old_length, str_new);
+      index += new_length;
+    }
+  }
+  return input_new;
+}
+
+// Tries to fix operators chains.
+// @param input The input string.
+// @return The new string with the operators fixed.
+std::string ShuntingYard::fixOperators(std::string input) {
+  std::string input_new = input;
+  bool end_condition = ((input_new.find("++", 0) == std::string::npos) && (input_new.find("--", 0) == std::string::npos) &&
+    (input_new.find("+-", 0) == std::string::npos) && (input_new.find("-+", 0) == std::string::npos));
+  while(end_condition == false) {
+    input_new = replaceAllRepeated(input_new, "++", "+");
+    input_new = replaceAllRepeated(input_new, "--", "+");
+    input_new = replaceAllRepeated(input_new, "+-", "-");
+    input_new = replaceAllRepeated(input_new, "-+", "-");
+    end_condition = ((input_new.find("++", 0) == std::string::npos) && (input_new.find("--", 0) == std::string::npos) &&
+      (input_new.find("+-", 0) == std::string::npos) && (input_new.find("-+", 0) == std::string::npos));
+  }
+  return input_new;
 }
 
 // Handles a number in the original input string.

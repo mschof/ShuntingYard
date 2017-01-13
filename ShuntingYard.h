@@ -36,6 +36,8 @@ class ShuntingYard
     std::map<std::string, unsigned int> operators_;
     std::map<std::string, unsigned int> functions_;
 
+    std::string replaceAllRepeated(std::string, std::string, std::string);
+    std::string fixOperators(std::string);
     int handleNumber(std::string, unsigned int, std::deque<Token>*);
     int handleParentheses(char, std::deque<Token>*, std::stack<Token>*);
     int handleFunctionArgumentSeparator(std::deque<Token>*, std::stack<Token>*);
